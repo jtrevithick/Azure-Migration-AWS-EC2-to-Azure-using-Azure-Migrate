@@ -16,6 +16,8 @@
 
 [Azure Migrate Part 4 with some troubleshooting video](https://www.youtube.com/watch?v=1afu6xcFsoo)
 
+[Azure Migrate Final video](https://www.youtube.com/watch?v=zIoWo-fYAtI)
+
 A hands-on, end-to-end cloud-to-cloud migration: a Windows Server VM is stood up on **AWS EC2**, discovered and assessed by **Azure Migrate**, replicated block-by-block into **Azure**, and cut over to a live Azure VM — with every step provisioned as code and validated by RDP.
 
 > **Interview one-liner:** *"I performed an end-to-end cloud migration from AWS to Azure using Azure Migrate — discovery, assessment, agentless replication, and cutover — and can walk through the decisions made at every stage."*

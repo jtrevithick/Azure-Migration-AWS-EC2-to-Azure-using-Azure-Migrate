@@ -8,7 +8,7 @@
 ![IaC](https://img.shields.io/badge/IaC-Terraform-844FBA)
 ![Clouds](https://img.shields.io/badge/clouds-AWS%20%2B%20Azure-orange)
 
-[![Watch](https://youtube.com  [qUzaybvfLiU]  /hqdefault.jpg)](https://youtu.be  [qUzaybvfLiU]  )
+[![Watch](https://youtube.com  qUzaybvfLiU  /hqdefault.jpg)](https://youtu.be  qUzaybvfLiU  )
 
 
 

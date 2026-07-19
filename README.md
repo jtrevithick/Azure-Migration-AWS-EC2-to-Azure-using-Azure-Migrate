@@ -10,6 +10,7 @@
 
 [Azure Migrate Part 1 video](https://www.youtube.com/watch?v=EOcLbz0TTE8)
 
+[Azure Migrate Part 2 video](https://www.youtube.com/watch?v=Yut7uVWyHkk)
 
 A hands-on, end-to-end cloud-to-cloud migration: a Windows Server VM is stood up on **AWS EC2**, discovered and assessed by **Azure Migrate**, replicated block-by-block into **Azure**, and cut over to a live Azure VM — with every step provisioned as code and validated by RDP.
 

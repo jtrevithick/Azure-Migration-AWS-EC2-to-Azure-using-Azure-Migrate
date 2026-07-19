@@ -8,9 +8,6 @@
 ![IaC](https://img.shields.io/badge/IaC-Terraform-844FBA)
 ![Clouds](https://img.shields.io/badge/clouds-AWS%20%2B%20Azure-orange)
 
-[![Watch](https://youtube.com  qUzaybvfLiU  /hqdefault.jpg)](https://youtu.be  qUzaybvfLiU  )
-
-
 
 A hands-on, end-to-end cloud-to-cloud migration: a Windows Server VM is stood up on **AWS EC2**, discovered and assessed by **Azure Migrate**, replicated block-by-block into **Azure**, and cut over to a live Azure VM — with every step provisioned as code and validated by RDP.
 

@@ -1,190 +1,255 @@
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.0"
     }
   }
 }
  
-provider "aws" {
-  region = var.aws_region
-}
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
- 
-  tags = {
-    Name    = "vpc-migrate-${var.yourname}"
-    project = "azure-migrate-lab"
-  }
+provider "azurerm" {
+  features {}
 }
  
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
- 
-  tags = {
-    Name = "igw-migrate-${var.yourname}"
-  }
+data "azurerm_client_config" "current" {}
+
+ resource "azurerm_resource_group" "source" {
+  name     = "rg-migrate-source-${var.yourname}"
+  location = var.location
+  tags     = var.tags
 }
  
-resource "aws_subnet" "main" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "${var.aws_region}a"
-  map_public_ip_on_launch = true
- 
-  tags = {
-    Name = "snet-migrate-${var.yourname}"
-  }
+resource "azurerm_virtual_network" "main" {
+  name                = "vnet-migrate-${var.yourname}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.source.name
+  address_space       = ["10.1.0.0/16"]
+  tags                = var.tags
 }
  
-resource "aws_route_table" "main" {
-  vpc_id = aws_vpc.main.id
- 
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
- 
-  tags = {
-    Name = "rt-migrate-${var.yourname}"
-  }
-}
- 
-resource "aws_route_table_association" "main" {
-  subnet_id      = aws_subnet.main.id
-  route_table_id = aws_route_table.main.id
-}
-resource "aws_security_group" "source_vm" {
-  name = "migrate-source-sg-${var.yourname}"
-  description = "Allow HTTPS and RDP for Azure Migrate lab"
-  vpc_id      = aws_vpc.main.id
- 
-  ingress {
-    description = "HTTPS for Azure Migrate appliance communication"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
- 
-  ingress {
-    description = "RDP for admin access"
-    from_port   = 3389
-    to_port     = 3389
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
- 
-  egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
- 
-  tags = {
-    Name = "sg-migrate-source-${var.yourname}"
-  }
-}
-data "aws_iam_policy_document" "assume_role" {
-  statement {
-    effect = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
-    }
-    actions = ["sts:AssumeRole"]
-  }
-}
- 
-data "aws_iam_policy_document" "migrate_permissions" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "ec2:DescribeInstances",
-      "ec2:DescribeInstanceTypes",
-      "ec2:DescribeVolumes",
-      "ec2:DescribeSnapshots",
-      "ec2:DescribeImages",
-      "ec2:DescribeRegions",
-      "ec2:CreateSnapshot",
-      "ec2:DeleteSnapshot",
-      "ec2:DescribeTags"
-    ]
-    resources = ["*"]
-  }
-}
- 
-resource "aws_iam_role" "migrate_role" {
-  name               = "role-azure-migrate-${var.yourname}"
-  assume_role_policy = data.aws_iam_policy_document.assume_role.json
- 
-  tags = {
-    project = "azure-migrate-lab"
-  }
-}
- 
-resource "aws_iam_policy" "migrate_policy" {
-  name   = "policy-azure-migrate-${var.yourname}"
-  policy = data.aws_iam_policy_document.migrate_permissions.json
+resource "azurerm_subnet" "main" {
+  name                 = "snet-migrate"
+  resource_group_name  = azurerm_resource_group.source.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["10.1.1.0/24"]
 }
 
- 
-resource "aws_iam_role_policy_attachment" "migrate_attach" {
-  role       = aws_iam_role.migrate_role.name
-  policy_arn = aws_iam_policy.migrate_policy.arn
+resource "azurerm_resource_group" "target" {
+  name     = "rg-migrate-target-${var.yourname}"
+  location = var.location
+  tags     = var.tags
 }
- 
-resource "aws_iam_instance_profile" "migrate_profile" {
-  name = "profile-azure-migrate-${var.yourname}"
-  role = aws_iam_role.migrate_role.name
-}
-resource "aws_instance" "source_vm" {
-  ami                    = var.windows_ami
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.main.id
-  vpc_security_group_ids = [aws_security_group.source_vm.id]
-  iam_instance_profile   = aws_iam_instance_profile.migrate_profile.name
- 
-  root_block_device {
-    volume_type = "gp3"
-    volume_size = 30
-    encrypted   = false
-  }
- 
-  user_data = <<-EOF
-    <powershell>
-    net user Administrator "${var.admin_password}"
-    </powershell>
-  EOF
- 
-  volume_tags = {
-    Name    = "vol-migrate-source-${var.yourname}"
-    project = "azure-migrate-lab"
-  }
- 
-  tags = {
-    Name    = "ec2-migrate-source-${var.yourname}"
-    project = "azure-migrate-lab"
+
+# Azure Migrate projects are not supported by the azurerm Terraform provider.
+# Create the project manually in the portal after terraform apply:
+#   1. Search "Azure Migrate" in the portal
+#   2. Click "Create project"
+#   3. Select resource group: rg-migrate-source-${var.yourname}
+#   4. Project name: migrate-project-${var.yourname}
+#   5. Geography: United States
+#   6. Click Create
+resource "null_resource" "migrate_project_reminder" {
+  triggers = {
+    resource_group = azurerm_resource_group.source.name
   }
 }
-resource "aws_iam_user" "migrate_user" {
-  name = "svc-azure-migrate-${var.yourname}"
+
+resource "azurerm_storage_account" "replication_cache" {
+  name                     = "stmigrate${var.yourname}"
+  resource_group_name      = azurerm_resource_group.source.name
+  location                 = var.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  account_kind             = "StorageV2"
+  min_tls_version          = "TLS1_2"
+  tags                     = var.tags
+}
+
+resource "azurerm_log_analytics_workspace" "main" {
+  name                = "law-migrate-${var.yourname}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.source.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+  tags                = var.tags
+}
+
+resource "azurerm_recovery_services_vault" "main" {
+  name                        = "rsv-migrate-${var.yourname}"
+  location                    = var.location
+  resource_group_name         = azurerm_resource_group.source.name
+  sku                         = "Standard"
+  soft_delete_enabled         = false
+  cross_region_restore_enabled = false
+  tags                        = var.tags
+}
+
+
+resource "azurerm_network_security_group" "target_vm" {
+  name                = "nsg-migrate-target-${var.yourname}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.target.name
  
-  tags = {
-    project = "azure-migrate-lab"
+  security_rule {
+    name                       = "allow-rdp"
+    priority                   = 1000
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3389"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
   }
+ 
+  tags = var.tags
+}
+
+resource "azurerm_public_ip" "appliance" {
+  name                = "pip-migrate-appliance-${var.yourname}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.source.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = var.tags
 }
  
-resource "aws_iam_user_policy_attachment" "migrate_user_policy" {
-  user       = aws_iam_user.migrate_user.name
-  policy_arn = aws_iam_policy.migrate_policy.arn
+resource "azurerm_network_interface" "appliance" {
+  name                = "nic-migrate-appliance-${var.yourname}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.source.name
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.main.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.appliance.id
+  }
+  tags = var.tags
 }
  
-resource "aws_iam_access_key" "migrate_user_key" {
-  user = aws_iam_user.migrate_user.name
+resource "azurerm_network_security_group" "appliance" {
+  name                = "nsg-migrate-appliance-${var.yourname}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.source.name
+  security_rule {
+    name                       = "allow-rdp"
+    priority                   = 1000
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3389"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+  tags = var.tags
 }
+ 
+resource "azurerm_network_interface_security_group_association" "appliance" {
+  network_interface_id      = azurerm_network_interface.appliance.id
+  network_security_group_id = azurerm_network_security_group.appliance.id
+}
+ 
+resource "azurerm_windows_virtual_machine" "appliance" {
+  name                  = "vm-mig-appl-${var.yourname}"
+  computer_name         = "jtrevith"             # 11 characters (Windows host name) otherwise it will not function without computer name
+  location              = var.location
+  resource_group_name   = azurerm_resource_group.source.name
+  size                  = "Standard_A4_v2"
+  admin_username        = "migrateadmin"
+  admin_password        = var.appliance_admin_password # need to change this to make it easier I just added the varabie in the vaiables.tf there where no variables in this name
+  network_interface_ids = [azurerm_network_interface.appliance.id]
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+    disk_size_gb         = 160  #need to change this from 80 to 160 otherwise I would get an error saying the drive is too small
+  }
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2022-Datacenter"
+    version   = "latest"
+  }
+  tags = var.tags
+}
+
+resource "azurerm_public_ip" "replication" {
+  name                = "pip-migrate-repl-${var.yourname}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.source.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = var.tags
+}
+ 
+resource "azurerm_network_interface" "replication" {
+  name                = "nic-migrate-repl-${var.yourname}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.source.name
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.main.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.replication.id
+  }
+  tags = var.tags
+}
+ 
+resource "azurerm_network_security_group" "replication" {
+  name                = "nsg-migrate-repl-${var.yourname}"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.source.name
+  security_rule {
+    name                       = "allow-rdp"
+    priority                   = 1000
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3389"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+  security_rule {
+    name                       = "allow-https-inbound"
+    priority                   = 1010
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+  tags = var.tags
+}
+ 
+resource "azurerm_network_interface_security_group_association" "replication" {
+  network_interface_id      = azurerm_network_interface.replication.id
+  network_security_group_id = azurerm_network_security_group.replication.id
+}
+ 
+resource "azurerm_windows_virtual_machine" "replication" {
+  name                  = "vm-mig-repl-${var.yourname}"
+  computer_name         = "repl-${var.yourname}"
+  location              = var.location
+  resource_group_name   = azurerm_resource_group.source.name
+  size                  = "Standard_A4_v2"
+  admin_username        = "replicationadmin"
+  admin_password        = var.replication_admin_password
+  network_interface_ids = [azurerm_network_interface.replication.id]
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+    disk_size_gb         = 127
+  }
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2022-Datacenter"  # Must be 2022 — installer fails on 2019
+    version   = "latest"
+  }
+  tags = var.tags
+}
+
+

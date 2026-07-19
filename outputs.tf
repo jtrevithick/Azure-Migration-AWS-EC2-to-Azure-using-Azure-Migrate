@@ -1,29 +1,34 @@
-output "ec2_instance_id" {
-  description = "AWS instance ID — needed when configuring Azure Migrate discovery."
-  value       = aws_instance.source_vm.id
+output "migrate_project_name" {
+  value = "migrate-project-${var.yourname} (create manually in portal)"
 }
  
-output "ec2_public_ip" {
-  description = "Public IP of the source EC2 instance — use this to connect via RDP."
-  value       = aws_instance.source_vm.public_ip
+output "source_resource_group" {
+  value = azurerm_resource_group.source.name
 }
  
-output "ec2_private_ip" {
-  description = "Private IP of the source EC2 instance."
-  value       = aws_instance.source_vm.private_ip
+output "target_resource_group" {
+  value = azurerm_resource_group.target.name
 }
  
-output "migrate_access_key_id" {
-  description = "AWS access key ID for the Azure Migrate service account. Paste into appliance config."
-  value       = aws_iam_access_key.migrate_user_key.id
+output "replication_storage_account" {
+  value = azurerm_storage_account.replication_cache.name
 }
  
-output "migrate_secret_access_key" {
-  description = "AWS secret access key for the Azure Migrate service account."
-  value       = aws_iam_access_key.migrate_user_key.secret
-  sensitive   = true
+output "recovery_services_vault" {
+  value = azurerm_recovery_services_vault.main.name
 }
  
-output "aws_region" {
-  value = var.aws_region
+output "target_subnet_id" {
+  description = "Paste this into the Azure Migrate replication settings when prompted for target subnet."
+  value       = azurerm_subnet.main.id
+}
+ 
+output "vnet_name" {
+  value = azurerm_virtual_network.main.name
+}
+
+# outputs.tf
+output "replication_appliance_public_ip" {
+  description = "Public IP of the replication appliance VM"
+  value       = azurerm_public_ip.replication.ip_address
 }

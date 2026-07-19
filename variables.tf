@@ -1,28 +1,30 @@
-variable "aws_region" {
-  description = "AWS region to deploy the source EC2 instance into."
-  type        = string
-  default     = "us-east-1"
-}
- 
 variable "yourname" {
-  description = "Your name, lowercase, no spaces. Used to make resource names unique."
-  type        = string
+  type = string
 }
  
-variable "windows_ami" {
-  description = "Windows Server 2022 Base AMI ID for us-east-1. Update if using a different region."
+variable "location" {
+  description = "Azure region for target resources. Choose a region close to your AWS region."
   type        = string
-  default     = "ami-0c2b0d3fb02824d92"
+  default     = "East US"
 }
  
-variable "instance_type" {
-  description = "EC2 instance type. t3.medium is the minimum for Windows Server."
-  type        = string
-  default     = "t3.medium"
+variable "tags" {
+  type = map(string)
+  default = {
+    project    = "azure-migrate-lab"
+    managed_by = "terraform"
+  }
 }
- 
-variable "admin_password" {
-  description = "Administrator password for the Windows Server instance."
+# Had to add a variable for admin password for the project to work
+
+variable "appliance_admin_password" {
+  description = ""
+  type        = string
+  default     = "G@mesforlife007"
+}
+
+variable "replication_admin_password" {
+  description = "Admin password for the replication appliance VM."
   type        = string
   sensitive   = true
 }
